@@ -1,6 +1,4 @@
-﻿
-using Agony.Common.Reflectors;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Agony.RadialTabs
 {
@@ -26,23 +24,26 @@ namespace Agony.RadialTabs
             this.siblings = siblings;
         }
 
-        public static RadialCell Create(uGUI_CraftNode node)
+        public static RadialCell Create(uGUI_CraftingMenu.Node node, int index)
         {
             if (node.parent == null) { return InvalidCell; }
 
-            var parentCell = Create(node.parent as uGUI_CraftNode);
-            if (parentCell == InvalidCell) { return CreateRootCell(node); }
+            var parentCell = Create(node.parent as uGUI_CraftingMenu.Node, index);
+            
+            if (parentCell == InvalidCell)
+                return CreateRootCell(node, index);
 
-            return parentCell.radius == 0 ? CreateChildCellWithOneElementAtRoot(node, parentCell) : CreateChildCell(node, parentCell);
+            return parentCell.radius == 0
+                ? CreateChildCellWithOneElementAtRoot(node, parentCell, index)
+                : CreateChildCell(node, parentCell, index);
         }
 
-        private static RadialCell CreateRootCell(uGUI_CraftNode node)
+        private static RadialCell CreateRootCell(uGUI_CraftingMenu.Node node, int index)
         {
             var siblings = node.parent.childCount;
             var size = (float)Config.RootIconSize;
             if (siblings <= 1) { return new RadialCell(0, 0, size, float.NaN, siblings, InvalidCell); }
 
-            var index = uGUI_CraftNodeReflector.GetIndex(node);
             var radius = GetPolygonRadius(size, siblings);
             if (siblings > Config.MaxRootIconCount)
             {
@@ -55,12 +56,11 @@ namespace Agony.RadialTabs
             return new RadialCell(radius, angle, size, float.NaN, siblings, InvalidCell);
         }
 
-        private static RadialCell CreateChildCellWithOneElementAtRoot(uGUI_CraftNode node, RadialCell parent)
+        private static RadialCell CreateChildCellWithOneElementAtRoot(uGUI_CraftingMenu.Node node, RadialCell parent, int index)
         {
             var siblings = node.parent.childCount;
             var size = ComputeNewSize(parent);
             var radius = ComputeNewRadius(parent, size);
-            var index = uGUI_CraftNodeReflector.GetIndex(node);
             var maxSiblings = GetPolygonLineCount(radius, size);
             if (siblings > maxSiblings)
             {
@@ -71,13 +71,12 @@ namespace Agony.RadialTabs
             return new RadialCell(radius, angle, size, float.NaN, siblings, parent);
         }
 
-        private static RadialCell CreateChildCell(uGUI_CraftNode node, RadialCell parent)
+        private static RadialCell CreateChildCell(uGUI_CraftingMenu.Node node, RadialCell parent, int index)
         {
             var siblings = node.parent.childCount;
             var size = ComputeNewSize(parent);
             var radius = ComputeNewRadius(parent, size);
             var maxSiblings = GetPolygonLineCount(radius, size);
-            var index = uGUI_CraftNodeReflector.GetIndex(node);
             if (siblings > maxSiblings)
             {
                 size = GetPolygonLineSize(radius, siblings);

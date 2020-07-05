@@ -1,55 +1,64 @@
-﻿
-using UnityEngine;
+﻿using UnityEngine;
 using Harmony;
-using Agony.Common.Reflectors;
 
 namespace Agony.RadialTabs
 {
     internal static class uGUI_CraftNodePatches
     {
-        [HarmonyPatch(typeof(uGUI_CraftNode), "CreateIcon")]
+		private static int LastIndex = 0;
+
+		[HarmonyPatch(typeof(uGUI_CraftingMenu), nameof(uGUI_CraftingMenu.GetIconMetrics))]
+		private static class GetIconMetricsCatcher
+        {
+			[HarmonyPostfix]
+			private static void Postfix(RectTransform canvas, uGUI_CraftingMenu.Node node, int index, int siblings)
+            {
+				LastIndex = index;
+			}
+		}
+
+		[HarmonyPatch(typeof(uGUI_CraftingMenu), nameof(uGUI_CraftingMenu.CreateIcon))]
         private static class CreateIconPatch
         {
-            private static void Postfix(uGUI_CraftNode __instance)
+			[HarmonyPostfix]
+            private static void Postfix(uGUI_CraftingMenu.Node node)
             {
-                RadialCell radialCell = RadialCell.Create(__instance);
-				var icon = __instance.icon;
+                RadialCell radialCell = RadialCell.Create(node, LastIndex);
+				var icon = node.icon;
                 var vector = new Vector2(radialCell.size, radialCell.size);
 				icon.SetBackgroundSize(vector);
 				icon.SetActiveSize(vector);
 				float num = radialCell.size * (float)Config.IconForegroundSizeMult;
 				icon.SetForegroundSize(num, num, true);
 				icon.SetBackgroundRadius(radialCell.size / 2f);
-				icon.rectTransform.SetParent(uGUI_CraftNodeReflector.GetView(__instance).iconsCanvas);
+				icon.rectTransform.SetParent(node.icon.canvas.transform);
 				icon.SetPosition(radialCell.parent.Position);
 			}
 		}
 
-		// Token: 0x02000017 RID: 23
-		[HarmonyPatch(typeof(uGUI_CraftNode), "SetVisible")]
+		[HarmonyPatch(typeof(uGUI_CraftingMenu), nameof(uGUI_CraftingMenu.Expand))]
 		private static class SetVisiblePatch
 		{
-			// Token: 0x06000056 RID: 86 RVA: 0x00002F40 File Offset: 0x00001140
-			private static void Postfix(uGUI_CraftNode __instance)
+			[HarmonyPostfix]
+			private static void Postfix(uGUI_CraftingMenu.Node node)
 			{
-				if (__instance.icon == null)
+				if (node.icon == null)
 				{
 					return;
 				}
-				RadialCell radialCell = RadialCell.Create(__instance);
-				Vector2 targetPosition = uGUI_CraftNodeReflector.GetVisible(__instance) ? radialCell.Position : radialCell.parent.Position;
+				RadialCell radialCell = RadialCell.Create(node, LastIndex);
+				Vector2 targetPosition = node.expanded ? radialCell.Position : radialCell.parent.Position;
 				float speed = (radialCell.radius + radialCell.size) * (float)Config.AnimationSpeedMult;
 				float fadeDistance = radialCell.size * (float)Config.AnimationFadeDistanceMult;
 				GhostMoving newAnimation = new GhostMoving(speed, fadeDistance, targetPosition);
-				ItemIconAnimation.Play(__instance.icon, newAnimation);
+				ItemIconAnimation.Play(node.icon, newAnimation);
 			}
 		}
 
-		// Token: 0x02000018 RID: 24
-		[HarmonyPatch(typeof(uGUI_CraftNode), "Punch")]
+		[HarmonyPatch(typeof(uGUI_CraftingMenu), nameof(uGUI_CraftingMenu.Punch))]
 		private static class PunchPatch
 		{
-			// Token: 0x06000057 RID: 87 RVA: 0x00002FB5 File Offset: 0x000011B5
+			[HarmonyPrefix]
 			private static bool Prefix()
 			{
 				return false;
